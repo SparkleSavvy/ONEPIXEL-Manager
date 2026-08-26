@@ -67,9 +67,12 @@ Deleting a version in the Library removes its folder permanently.
 
 ## Notes
 
-- Releases that contain no modpack assets (e.g. tool-only releases) are filtered out automatically.
 - Changing `online-mode` requires a server restart to take effect.
-- Self-update: set `managerRepo` (`"owner/name"`) in `config.json` once the repository exists; the Settings page will then compare releases against the running version.
+- Self-update: the Settings page compares releases of
+  [SparkleSavvy/ONEPIXEL-Manager](https://github.com/SparkleSavvy/ONEPIXEL-Manager)
+  against the running version. Override with `managerRepo` (`owner/name`) in
+  `config.json`, or set it to an invalid value to disable checks.
+- Releases that contain no modpack assets (e.g. tool-only releases) are filtered out automatically.
 
 ## Related
 

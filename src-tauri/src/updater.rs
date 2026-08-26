@@ -42,16 +42,23 @@ fn is_newer(candidate: &str, current: &str) -> bool {
     false
 }
 
-/// Check the manager's own GitHub repo (if configured) for a newer release.
+/// Default repository used for self-update checks.
+pub const DEFAULT_MANAGER_REPO: &str = "SparkleSavvy/ONEPIXEL-Manager";
+
+/// Check the manager's own GitHub repo for a newer release.
 ///
-/// The manager repository does not exist yet, so until `managerRepo` is set in
-/// config.json this stays inert and simply reports the running version.
+/// Set `managerRepo` (`owner/name`) in config.json to override the default
+/// repository, or set it to an invalid value to disable checks.
 #[tauri::command]
 pub async fn check_updates(state: State<'_, AppState>) -> Result<UpdateStatus, String> {
     let cfg = config::load_config();
     let current = env!("CARGO_PKG_VERSION").to_string();
 
-    let Some(repo) = cfg.manager_repo.filter(|r| r.contains('/')) else {
+    let Some(repo) = cfg
+        .manager_repo
+        .filter(|r| r.contains('/'))
+        .or_else(|| Some(DEFAULT_MANAGER_REPO.to_string()))
+    else {
         return Ok(UpdateStatus {
             configured: false,
             current_version: current,
