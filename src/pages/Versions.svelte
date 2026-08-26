@@ -154,19 +154,7 @@
           </div>
           <div class="version-assets">
             {#if client}
-              {#if downloads.active(idFor("client", r.tag))}
-                {@const state = downloads.state(idFor("client", r.tag))}
-                {@const pct = downloads.percent(idFor("client", r.tag))}
-                {@const speed = speeds[idFor("client", r.tag)] ?? 0}
-                <div class="dl-inline">
-                  <div class="dl-progress">
-                    <div class="dl-progress-fill" style:width="{state?.phase === 'done' ? 100 : pct}%"></div>
-                  </div>
-                  <span class="dl-label">{pct}%</span>
-                  <span class="dl-speed">{formatSpeed(speed)}</span>
-                  <button class="btn btn-ghost btn-sm dl-cancel" onclick={() => cancel(idFor("client", r.tag))}>Cancel</button>
-                </div>
-              {:else}
+              {#if !downloads.active(idFor("client", r.tag))}
                 <button class="btn btn-primary btn-sm" onclick={() => start("client", r.tag)}>
                   Download mrpack
                   <span class="faint" style="color:inherit;opacity:.65">{formatBytes(client.size)}</span>
@@ -174,18 +162,7 @@
               {/if}
             {/if}
             {#if server}
-              {#if downloads.active(idFor("server", r.tag))}
-                {@const pct = downloads.percent(idFor("server", r.tag))}
-                {@const speed = speeds[idFor("server", r.tag)] ?? 0}
-                <div class="dl-inline">
-                  <div class="dl-progress">
-                    <div class="dl-progress-fill" style:width="{pct}%"></div>
-                  </div>
-                  <span class="dl-label">{pct}%</span>
-                  <span class="dl-speed">{formatSpeed(speed)}</span>
-                  <button class="btn btn-ghost btn-sm dl-cancel" onclick={() => cancel(idFor("server", r.tag))}>Cancel</button>
-                </div>
-              {:else}
+              {#if !downloads.active(idFor("server", r.tag))}
                 <button class="btn btn-sm" onclick={() => start("server", r.tag)}>
                   Server pack
                   <span class="faint" style="opacity:.65">{formatBytes(server.size)}</span>
@@ -193,18 +170,7 @@
               {/if}
             {/if}
             {#if zip}
-              {#if downloads.active(idFor("zip", r.tag))}
-                {@const pct = downloads.percent(idFor("zip", r.tag))}
-                {@const speed = speeds[idFor("zip", r.tag)] ?? 0}
-                <div class="dl-inline">
-                  <div class="dl-progress">
-                    <div class="dl-progress-fill" style:width="{pct}%"></div>
-                  </div>
-                  <span class="dl-label">{pct}%</span>
-                  <span class="dl-speed">{formatSpeed(speed)}</span>
-                  <button class="btn btn-ghost btn-sm dl-cancel" onclick={() => cancel(idFor("zip", r.tag))}>Cancel</button>
-                </div>
-              {:else}
+              {#if !downloads.active(idFor("zip", r.tag))}
                 <button class="btn btn-sm" onclick={() => start("zip", r.tag)}>
                   Full ZIP
                   <span class="faint" style="opacity:.65">{formatBytes(zip.size)}</span>
@@ -215,10 +181,10 @@
         </div>
         {#if body}
           {#if expanded[r.tag]}
-            <pre class="release-body">{body}</pre>
+            <div class="release-body">{body}</div>
             <button
               class="btn btn-ghost btn-sm"
-              style="padding-left:0;margin-top:2px"
+              style="padding-left:0;margin-top:6px"
               onclick={() => (expanded[r.tag] = false)}
             >
               Show less
@@ -226,14 +192,33 @@
           {:else if body.length > 140}
             <button
               class="btn btn-ghost btn-sm"
-              style="padding-left:0;margin-top:4px"
+              style="padding-left:0;margin-top:6px"
               onclick={() => (expanded[r.tag] = true)}
             >
               Show release notes
             </button>
           {:else}
-            <p class="release-body" style="margin-top:4px">{body}</p>
+            <div class="release-body" style="margin-top:6px">{body}</div>
           {/if}
+        {/if}
+        {#if (client && downloads.active(idFor("client", r.tag))) || (server && downloads.active(idFor("server", r.tag))) || (zip && downloads.active(idFor("zip", r.tag)))}
+          <div class="dl-bar">
+            {#each [["client", client], ["server", server], ["zip", zip]] as [kind, asset]}
+              {#if asset && downloads.active(idFor(kind as DownloadKind, r.tag))}
+                {@const pct = downloads.percent(idFor(kind as DownloadKind, r.tag))}
+                {@const speed = speeds[idFor(kind as DownloadKind, r.tag)] ?? 0}
+                <div class="dl-bar-item">
+                  <span class="dl-bar-kind">{kind === "client" ? "mrpack" : kind === "server" ? "server" : "zip"}</span>
+                  <div class="dl-bar-track">
+                    <div class="dl-bar-fill" style:width="{pct}%"></div>
+                  </div>
+                  <span class="dl-bar-pct">{pct}%</span>
+                  <span class="dl-bar-speed">{formatSpeed(speed)}</span>
+                  <button class="btn btn-ghost btn-sm dl-bar-cancel" onclick={() => cancel(idFor(kind as DownloadKind, r.tag))}>Cancel</button>
+                </div>
+              {/if}
+            {/each}
+          </div>
         {/if}
       </article>
     {/each}
@@ -269,28 +254,55 @@
     flex-wrap: wrap;
   }
 
-  .dl-inline {
+  .release-body {
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 13px;
+    color: var(--text-dim);
+    line-height: 1.6;
+    margin: 0;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  .dl-bar {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid var(--border);
     display: flex;
-    align-items: center;
+    flex-direction: column;
     gap: 6px;
   }
 
-  .dl-progress {
-    width: 80px;
+  .dl-bar-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .dl-bar-kind {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    color: var(--text-faint);
+    min-width: 48px;
+    text-align: right;
+  }
+
+  .dl-bar-track {
+    flex: 1;
     height: 3px;
     background: var(--surface-3);
     border-radius: 2px;
     overflow: hidden;
   }
 
-  .dl-progress-fill {
+  .dl-bar-fill {
     height: 100%;
     background: var(--text);
     border-radius: 2px;
     transition: width 0.3s linear;
   }
 
-  .dl-label {
+  .dl-bar-pct {
     font-family: var(--mono);
     font-size: 11px;
     color: var(--text-dim);
@@ -298,7 +310,7 @@
     text-align: right;
   }
 
-  .dl-speed {
+  .dl-bar-speed {
     font-family: var(--mono);
     font-size: 10.5px;
     color: var(--text-faint);
@@ -306,21 +318,12 @@
     white-space: nowrap;
   }
 
-  .dl-cancel {
+  .dl-bar-cancel {
     font-size: 10.5px;
     color: var(--text-faint);
   }
 
-  .dl-cancel:hover {
+  .dl-bar-cancel:hover {
     color: var(--text);
-  }
-
-  .release-body {
-    font-size: 12.5px;
-    color: var(--text-dim);
-    line-height: 1.5;
-    margin: 0;
-    white-space: pre-wrap;
-    word-break: break-word;
   }
 </style>
