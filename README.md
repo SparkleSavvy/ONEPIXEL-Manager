@@ -6,7 +6,6 @@ A lightweight desktop build manager for the [ONEPIXEL Minecraft modpack](https:/
 
 - **Versions** — browse every published release of the modpack straight from GitHub.
   - Download any `.mrpack` client pack
-  - Download full `.zip` archives (for launchers without mrpack support)
   - Download ready-to-run **server packs** where available
   - Streaming downloads with progress bars, cancel support and SHA-256 integrity checks against GitHub digests
 - **Library** — everything downloaded on this machine.
