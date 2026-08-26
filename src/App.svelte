@@ -4,12 +4,13 @@
   import Sidebar from "./lib/components/Sidebar.svelte";
   import Versions from "./pages/Versions.svelte";
   import Library from "./pages/Library.svelte";
+  import Server from "./pages/Server.svelte";
   import Settings from "./pages/Settings.svelte";
   import { downloads } from "./lib/downloads.svelte";
   import { servers } from "./lib/servers.svelte";
   import { toasts } from "./lib/toast.svelte";
 
-  type Page = "versions" | "library" | "settings";
+  type Page = "versions" | "library" | "server" | "settings";
   let page = $state<Page>("versions");
 
   onMount(() => {
@@ -26,6 +27,8 @@
       <Versions />
     {:else if page === "library"}
       <Library />
+    {:else if page === "server"}
+      <Server />
     {:else}
       <Settings />
     {/if}
