@@ -6,6 +6,7 @@
   import Library from "./pages/Library.svelte";
   import Settings from "./pages/Settings.svelte";
   import { downloads } from "./lib/downloads.svelte";
+  import { servers } from "./lib/servers.svelte";
   import { toasts } from "./lib/toast.svelte";
 
   type Page = "versions" | "library" | "settings";
@@ -13,6 +14,7 @@
 
   onMount(() => {
     downloads.init();
+    servers.init();
   });
 </script>
 

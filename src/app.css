@@ -222,6 +222,36 @@ input[type="text"]:focus {
   color: var(--text-faint);
   font-family: var(--mono);
   font-size: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.server-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #4a4a51;
+  padding: 4px;
+  border-radius: 6px;
+  border: none;
+  background: none;
+  font-family: var(--mono);
+  font-size: 11px;
+  line-height: 1;
+}
+
+button.server-indicator {
+  cursor: pointer;
+}
+
+button.server-indicator:hover {
+  background: var(--surface-2);
+}
+
+.server-indicator.on {
+  color: #43c66b;
+  filter: drop-shadow(0 0 5px rgba(67, 198, 107, 0.45));
 }
 
 /* ---------- cards / lists ---------- */

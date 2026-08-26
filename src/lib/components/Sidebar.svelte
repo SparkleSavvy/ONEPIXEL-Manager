@@ -1,5 +1,6 @@
 <script lang="ts">
   import { version } from "../../../package.json";
+  import { servers } from "../servers.svelte";
 
   type Page = "versions" | "library" | "settings";
 
@@ -18,6 +19,13 @@
     settings:
       "M12 15a3 3 0 100-6 3 3 0 000 6zm7.4-3a7.4 7.4 0 00-.1-1.2l2-1.5-2-3.4-2.3 1a7.4 7.4 0 00-2-1.2L14.6 3h-5l-.4 2.5a7.4 7.4 0 00-2 1.2l-2.3-1-2 3.4 2 1.5a7.4 7.4 0 000 2.4l-2 1.5 2 3.4 2.3-1a7.4 7.4 0 002 1.2l.4 2.5h5l.4-2.5a7.4 7.4 0 002-1.2l2.3 1 2-3.4-2-1.5c.06-.4.1-.8.1-1.2z",
   };
+
+  const serverGlyph =
+    "M4 5h16a1 1 0 011 1v4a1 1 0 01-1 1H4a1 1 0 01-1-1V6a1 1 0 011-1zM4 13h16a1 1 0 011 1v4a1 1 0 01-1 1H4a1 1 0 01-1-1v-4a1 1 0 011-1zM7 8h.01M7 16h.01";
+
+  const runningTags = $derived(
+    Object.keys(servers.running).filter((t) => servers.running[t]),
+  );
 </script>
 
 <aside class="sidebar">
@@ -51,5 +59,44 @@
     {/each}
   </nav>
 
-  <div class="sidebar-footer">v{version}</div>
+  <div class="sidebar-footer">
+    <span>v{version}</span>
+    {#if runningTags.length > 0}
+      <button
+        type="button"
+        class="server-indicator on"
+        title={`Running: ${runningTags.join(", ")}`}
+        onclick={() => (page = "library")}
+      >
+        <svg
+          viewBox="0 0 24 24"
+          width="14"
+          height="14"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.6"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d={serverGlyph} />
+        </svg>
+        {runningTags.length}
+      </button>
+    {:else}
+      <span class="server-indicator" title="No servers running">
+        <svg
+          viewBox="0 0 24 24"
+          width="14"
+          height="14"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.6"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d={serverGlyph} />
+        </svg>
+      </span>
+    {/if}
+  </div>
 </aside>

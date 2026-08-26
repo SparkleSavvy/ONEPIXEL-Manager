@@ -1,16 +1,14 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { listen } from "@tauri-apps/api/event";
 
   import { api, formatBytes, formatUnix } from "../lib/api";
   import { downloads } from "../lib/downloads.svelte";
+  import { servers } from "../lib/servers.svelte";
   import { toasts } from "../lib/toast.svelte";
-  import type { LibrarySnapshot, LogEvent, StatusEvent } from "../lib/types";
+  import type { LibrarySnapshot } from "../lib/types";
   import Confirm from "../lib/components/Confirm.svelte";
 
   let snap = $state<LibrarySnapshot | null>(null);
-  let runningMap = $state<Record<string, boolean>>({});
-  let logs = $state<Record<string, string[]>>({});
   let selectedServer = $state<string | null>(null);
   let commandText = $state("");
   let togglingOnline = $state<Record<string, boolean>>({});
@@ -22,9 +20,11 @@
 
   async function refresh() {
     snap = await api.listLibrary();
-    for (const tag of snap.running) {
-      if (!runningMap[tag]) runningMap[tag] = true;
-      selectedServer ||= tag;
+    // Keep the global running map in sync with the backend snapshot.
+    for (const tag of snap.running) servers.running[tag] = true;
+    if (!selectedServer) {
+      const firstRunning = Object.keys(servers.running).find((t) => servers.running[t]);
+      selectedServer = firstRunning ?? Object.keys(servers.logs)[0] ?? null;
     }
   }
 
@@ -40,8 +40,8 @@
   async function startServer(tag: string) {
     try {
       await api.startServer(tag);
-      runningMap[tag] = true;
-      pushLog(tag, "[manager] server process started");
+      servers.running[tag] = true;
+      servers.pushLog(tag, "[manager] server process started");
       selectedServer = tag;
     } catch (e) {
       toasts.error(String(e));
@@ -51,7 +51,7 @@
   async function stopServer(tag: string) {
     try {
       await api.stopServer(tag);
-      pushLog(tag, "[manager] stop requested…");
+      servers.pushLog(tag, "[manager] stop requested…");
     } catch (e) {
       toasts.error(String(e));
     }
@@ -82,7 +82,7 @@
     try {
       srv.onlineMode = await api.setOnlineMode(tag, next);
       toasts.show(
-        `online-mode=${srv.onlineMode} for ${tag}${runningMap[tag] ? " (restart the server to apply)" : ""}`,
+        `online-mode=${srv.onlineMode} for ${tag}${servers.running[tag] ? " (restart the server to apply)" : ""}`,
       );
     } catch (e) {
       srv.onlineMode = !next;
@@ -108,48 +108,26 @@
   async function deleteServer(tag: string) {
     try {
       await api.deleteServer(tag);
-      delete logs[tag];
+      delete servers.logs[tag];
       await refresh();
     } catch (e) {
       toasts.error(String(e));
     }
   }
 
-  function pushLog(tag: string, line: string) {
-    const arr = logs[tag] ?? [];
-    arr.push(line);
-    // Cap the in-memory buffer.
-    logs[tag] = arr.length > 2000 ? arr.slice(-1500) : arr;
-  }
-
   $effect(() => {
-    const tag = selectedServer;
-    const lines = tag ? logs[tag]?.length ?? 0 : 0;
+    const lines = selectedServer ? (servers.logs[selectedServer]?.length ?? 0) : 0;
     void lines;
     if (consoleEl) consoleEl.scrollTop = consoleEl.scrollHeight;
   });
 
   onMount(() => {
     refresh();
-
-    const unlistenStatus = listen<StatusEvent>("server-status", (e) => {
-      const { tag, running, exitCode } = e.payload;
-      runningMap[tag] = running;
-      if (!running && exitCode !== null && exitCode !== undefined) {
-        pushLog(tag, `[manager] process exited with code ${exitCode}`);
-      }
-      refresh();
-    });
-
-    const unlistenLog = listen<LogEvent>("server-log", (e) => {
-      pushLog(e.payload.tag, e.payload.line);
-    });
-
+    // Refresh snapshot when a server starts/stops or a download finishes.
+    const offStatus = servers.onChange(refresh);
     const offDone = downloads.onDone(() => refresh());
-
     return () => {
-      unlistenStatus.then((f) => f());
-      unlistenLog.then((f) => f());
+      offStatus();
       offDone();
     };
   });
@@ -164,6 +142,8 @@
             : f.name,
       size: f.size,
     }));
+
+  const serverTagsWithLogs = $derived(Object.keys(servers.logs));
 </script>
 
 <div class="page-head">
@@ -222,7 +202,7 @@
 {:else}
   <div class="stack">
     {#each snap.servers as s (s.tag)}
-      {@const isRunning = runningMap[s.tag]}
+      {@const isRunning = !!servers.running[s.tag]}
       <article class="card">
         <div class="row">
           <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
@@ -281,12 +261,24 @@
   </div>
 {/if}
 
-{#if selectedServer}
-  <span class="section-label">Console · {selectedServer}</span>
+{#if selectedServer && servers.logs[selectedServer]}
+  <span class="section-label">
+    Console ·
+    <select
+      class="console-picker"
+      value={selectedServer}
+      onchange={(e) =>
+        (selectedServer = (e.currentTarget as HTMLSelectElement).value || null)}
+    >
+      {#each serverTagsWithLogs as t (t)}
+        <option value={t}>{t}{servers.running[t] ? " — running" : ""}</option>
+      {/each}
+    </select>
+  </span>
   <div class="console" bind:this={consoleEl}>
-    {(logs[selectedServer] ?? []).join("\n")}
+    {(servers.logs[selectedServer] ?? []).join("\n")}
   </div>
-  {#if runningMap[selectedServer]}
+  {#if servers.running[selectedServer]}
     <div class="cmd-row">
       <input
         class="cmd-input"
@@ -300,19 +292,6 @@
   {:else}
     <p class="kbd-note" style="margin-top:8px">Start the server to send commands.</p>
   {/if}
-{:else if Object.keys(logs).length > 0}
-  <span class="section-label">Console</span>
-  <select
-    onchange={(e) => (selectedServer = (e.currentTarget as HTMLSelectElement).value)}
-    style="margin-bottom:10px"
-  >
-    {#each Object.keys(logs) as t (t)}
-      <option value={t}>{t}</option>
-    {/each}
-  </select>
-  <div class="console" bind:this={consoleEl}>
-    {(logs[selectedServer!] ?? []).join("\n")}
-  </div>
 {/if}
 
 <Confirm
@@ -332,3 +311,15 @@
   onconfirm={() => pendingDeleteServer && deleteServer(pendingDeleteServer)}
   onclose={() => (pendingDeleteServer = null)}
 />
+
+<style>
+  .console-picker {
+    font-family: var(--mono);
+    text-transform: none;
+    letter-spacing: normal;
+    font-size: 11.5px;
+    padding: 2px 6px;
+    vertical-align: middle;
+    margin-left: 6px;
+  }
+</style>
