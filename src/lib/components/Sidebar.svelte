@@ -1,7 +1,6 @@
 <script lang="ts">
   import { version } from "../../../package.json";
   import { servers } from "../servers.svelte";
-  import DownloadInfo from "./DownloadInfo.svelte";
 
   type Page = "versions" | "library" | "server" | "settings";
 
@@ -59,8 +58,6 @@
       </button>
     {/each}
   </nav>
-
-  <DownloadInfo />
 
   <div class="sidebar-footer">
     <span>v{version}</span>

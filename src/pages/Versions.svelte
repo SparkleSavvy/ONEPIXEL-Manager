@@ -12,6 +12,11 @@
   let expanded = $state<Record<string, boolean>>({});
   let installedIds = $state<Record<string, boolean>>({});
 
+  const TICK_MS = 500;
+  let prevReceived = $state<Record<string, number>>({});
+  let prevTime = $state<Record<string, number>>({});
+  let speeds = $state<Record<string, number>>({});
+
   const idFor = (kind: DownloadKind, tag: string) => `${kind}:${tag}`;
 
   function assetOf(r: ReleaseInfo, kind: DownloadKind): AssetInfo | undefined {
@@ -43,10 +48,56 @@
     }
   }
 
+  async function cancel(id: string) {
+    try {
+      await api.cancelDownload(id);
+    } catch (e) {
+      toasts.error(String(e));
+    }
+  }
+
   function bodyPreview(body: string | null): string {
     if (!body) return "";
     return body.replace(/^>.*$/gm, "").trim();
   }
+
+  function formatSpeed(bytesPerSec: number): string {
+    if (bytesPerSec < 1024) return `${bytesPerSec} B/s`;
+    if (bytesPerSec < 1048576) return `${(bytesPerSec / 1024).toFixed(1)} KB/s`;
+    return `${(bytesPerSec / 1048576).toFixed(1)} MB/s`;
+  }
+
+  $effect(() => {
+    const now = Date.now();
+    for (const d of Object.values(downloads.map)) {
+      if (d.phase === "done") continue;
+      if (!(d.id in prevReceived)) {
+        prevReceived[d.id] = d.received;
+        prevTime[d.id] = now;
+        speeds[d.id] = 0;
+      }
+    }
+  });
+
+  $effect(() => {
+    const interval = setInterval(() => {
+      const now = Date.now();
+      for (const d of Object.values(downloads.map)) {
+        if (d.phase === "done") continue;
+        const prev = prevReceived[d.id];
+        const prevT = prevTime[d.id];
+        if (prev !== undefined && prevT !== undefined) {
+          const dt = (now - prevT) / 1000;
+          if (dt > 0) {
+            speeds[d.id] = Math.round((d.received - prev) / dt);
+          }
+          prevReceived[d.id] = d.received;
+          prevTime[d.id] = now;
+        }
+      }
+    }, TICK_MS);
+    return () => clearInterval(interval);
+  });
 
   onMount(() => {
     load();
@@ -68,10 +119,6 @@
       }
     });
   });
-
-  const busyCount = $derived(
-    Object.values(downloads.map).filter((d) => d.phase !== "done").length,
-  );
 </script>
 
 <div class="page-head">
@@ -79,16 +126,11 @@
     <h1 class="page-title">Versions</h1>
     <p class="page-subtitle">Every published build of the ONEPIXEL modpack.</p>
   </div>
-  <div style="display:flex;align-items:center;gap:10px">
-    {#if busyCount > 0}
-      <span class="faint small">{busyCount} active</span>
-    {/if}
-    <button class="btn btn-sm" onclick={load} disabled={loading}>Refresh</button>
-  </div>
+  <button class="btn btn-sm" onclick={load} disabled={loading}>Refresh</button>
 </div>
 
 {#if loading}
-  <div class="empty-state">Loading releases…</div>
+  <div class="empty-state">Loading releases...</div>
 {:else if errorText}
   <div class="empty-state">
     <p>{errorText}</p>
@@ -103,75 +145,182 @@
       {@const server = assetOf(r, "server")}
       {@const zip = assetOf(r, "zip")}
       {@const body = bodyPreview(r.body)}
-      <article class="card">
-        <div class="row">
-          <div style="min-width:0">
-            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-              <span class="mono" style="font-size:15px;font-weight:600">{r.tag}</span>
-              <span class="muted">{r.name}</span>
-              <span class="faint small">{formatDate(r.publishedAt)}</span>
-            </div>
-            {#if body}
-              <p
-                class="release-body"
-                style:margin-top="8px"
-                style:max-width="640px"
-                style:white-space={expanded[r.tag] ? "pre-wrap" : "nowrap"}
-                style:overflow="hidden"
-                style:text-overflow={expanded[r.tag] ? "unset" : "ellipsis"}
-              >
-                {body}
-              </p>
-              {#if body.length > 140}
-                <button
-                  class="btn btn-ghost btn-sm"
-                  style="padding-left:0;margin-top:2px"
-                  onclick={() => (expanded[r.tag] = !expanded[r.tag])}
-                >
-                  {expanded[r.tag] ? "Show less" : "Show more"}
-                </button>
-              {/if}
-            {/if}
+      <article class="card version-row">
+        <div class="version-header">
+          <div class="version-meta">
+            <span class="mono" style="font-weight:600">{r.tag}</span>
+            <span class="muted">{r.name}</span>
+            <span class="faint small">{formatDate(r.publishedAt)}</span>
           </div>
-
-          <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-end;flex-shrink:0">
+          <div class="version-assets">
             {#if client}
               {#if downloads.active(idFor("client", r.tag))}
-                <span class="faint small">Downloading…</span>
+                {@const state = downloads.state(idFor("client", r.tag))}
+                {@const pct = downloads.percent(idFor("client", r.tag))}
+                {@const speed = speeds[idFor("client", r.tag)] ?? 0}
+                <div class="dl-inline">
+                  <div class="dl-progress">
+                    <div class="dl-progress-fill" style:width="{state?.phase === 'done' ? 100 : pct}%"></div>
+                  </div>
+                  <span class="dl-label">{pct}%</span>
+                  <span class="dl-speed">{formatSpeed(speed)}</span>
+                  <button class="btn btn-ghost btn-sm dl-cancel" onclick={() => cancel(idFor("client", r.tag))}>Cancel</button>
+                </div>
               {:else}
-                <button
-                  class="btn btn-primary btn-sm"
-                  onclick={() => start("client", r.tag)}
-                >
-                  {installedIds[idFor("client", r.tag)] ? "Download again" : "Download mrpack"}
+                <button class="btn btn-primary btn-sm" onclick={() => start("client", r.tag)}>
+                  Download mrpack
                   <span class="faint" style="color:inherit;opacity:.65">{formatBytes(client.size)}</span>
                 </button>
               {/if}
             {/if}
-
-            <div style="display:flex;gap:8px">
-              {#if server}
-                {#if downloads.active(idFor("server", r.tag))}
-                  <span class="faint small">Downloading…</span>
-                {:else}
-                  <button class="btn btn-sm" onclick={() => start("server", r.tag)}>
-                    Server pack · {formatBytes(server.size)}
-                  </button>
-                {/if}
+            {#if server}
+              {#if downloads.active(idFor("server", r.tag))}
+                {@const pct = downloads.percent(idFor("server", r.tag))}
+                {@const speed = speeds[idFor("server", r.tag)] ?? 0}
+                <div class="dl-inline">
+                  <div class="dl-progress">
+                    <div class="dl-progress-fill" style:width="{pct}%"></div>
+                  </div>
+                  <span class="dl-label">{pct}%</span>
+                  <span class="dl-speed">{formatSpeed(speed)}</span>
+                  <button class="btn btn-ghost btn-sm dl-cancel" onclick={() => cancel(idFor("server", r.tag))}>Cancel</button>
+                </div>
+              {:else}
+                <button class="btn btn-sm" onclick={() => start("server", r.tag)}>
+                  Server pack
+                  <span class="faint" style="opacity:.65">{formatBytes(server.size)}</span>
+                </button>
               {/if}
-              {#if zip}
-                {#if downloads.active(idFor("zip", r.tag))}
-                  <span class="faint small">Downloading…</span>
-                {:else}
-                  <button class="btn btn-sm" onclick={() => start("zip", r.tag)}>
-                    Full ZIP · {formatBytes(zip.size)}
-                  </button>
-                {/if}
+            {/if}
+            {#if zip}
+              {#if downloads.active(idFor("zip", r.tag))}
+                {@const pct = downloads.percent(idFor("zip", r.tag))}
+                {@const speed = speeds[idFor("zip", r.tag)] ?? 0}
+                <div class="dl-inline">
+                  <div class="dl-progress">
+                    <div class="dl-progress-fill" style:width="{pct}%"></div>
+                  </div>
+                  <span class="dl-label">{pct}%</span>
+                  <span class="dl-speed">{formatSpeed(speed)}</span>
+                  <button class="btn btn-ghost btn-sm dl-cancel" onclick={() => cancel(idFor("zip", r.tag))}>Cancel</button>
+                </div>
+              {:else}
+                <button class="btn btn-sm" onclick={() => start("zip", r.tag)}>
+                  Full ZIP
+                  <span class="faint" style="opacity:.65">{formatBytes(zip.size)}</span>
+                </button>
               {/if}
-            </div>
+            {/if}
           </div>
         </div>
+        {#if body}
+          {#if expanded[r.tag]}
+            <pre class="release-body">{body}</pre>
+            <button
+              class="btn btn-ghost btn-sm"
+              style="padding-left:0;margin-top:2px"
+              onclick={() => (expanded[r.tag] = false)}
+            >
+              Show less
+            </button>
+          {:else if body.length > 140}
+            <button
+              class="btn btn-ghost btn-sm"
+              style="padding-left:0;margin-top:4px"
+              onclick={() => (expanded[r.tag] = true)}
+            >
+              Show release notes
+            </button>
+          {:else}
+            <p class="release-body" style="margin-top:4px">{body}</p>
+          {/if}
+        {/if}
       </article>
     {/each}
   </div>
 {/if}
+
+<style>
+  .version-row {
+    padding: 12px 16px;
+  }
+
+  .version-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  .version-meta {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    min-width: 0;
+    flex-wrap: wrap;
+  }
+
+  .version-assets {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+    flex-wrap: wrap;
+  }
+
+  .dl-inline {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .dl-progress {
+    width: 80px;
+    height: 3px;
+    background: var(--surface-3);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .dl-progress-fill {
+    height: 100%;
+    background: var(--text);
+    border-radius: 2px;
+    transition: width 0.3s linear;
+  }
+
+  .dl-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-dim);
+    min-width: 30px;
+    text-align: right;
+  }
+
+  .dl-speed {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    color: var(--text-faint);
+    min-width: 60px;
+    white-space: nowrap;
+  }
+
+  .dl-cancel {
+    font-size: 10.5px;
+    color: var(--text-faint);
+  }
+
+  .dl-cancel:hover {
+    color: var(--text);
+  }
+
+  .release-body {
+    font-size: 12.5px;
+    color: var(--text-dim);
+    line-height: 1.5;
+    margin: 0;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+</style>
