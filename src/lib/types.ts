@@ -37,6 +37,8 @@ export interface InstalledServer {
   installedAt: number;
   propertiesPath?: string | null;
   onlineMode?: boolean | null;
+  hasServerJar?: boolean;
+  ramMb?: number;
 }
 
 export interface LibrarySnapshot {

@@ -1,5 +1,6 @@
 mod config;
 mod downloader;
+mod fabric;
 mod github;
 mod launcher;
 mod library;
@@ -29,6 +30,8 @@ pub fn run() {
             server::start_server,
             server::stop_server,
             server::send_server_command,
+            server::set_server_ram,
+            fabric::install_fabric_server,
             updater::check_updates,
         ])
         .run(tauri::generate_context!())

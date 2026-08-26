@@ -16,6 +16,8 @@ A lightweight desktop build manager for the [ONEPIXEL Minecraft modpack](https:/
     - Automatic acceptance of the ServerPackCreator "Type 'I agree'" prompt, so automated Java (Jabba) installation proceeds unattended
     - Send commands to the running server from the built-in console (`stop`, `say hello`, …)
     - Toggle `online-mode` in `server.properties` with one switch (applies on next server start)
+    - **Fabric 1.20.1 helper**: installs the standalone Fabric server launcher into the pack folder as `server.jar` (latest loader/installer resolved via Fabric Meta, missing `eula.txt` is created)
+    - **Managed start script**: when a `server.jar` is present, the manager generates its own launch script (`onepixel-start.bat`) with Aikar's G1GC flags and a selectable heap size (1–16 GB), bypassing pack-provided scripts
   - Delete versions and server packs (with guards while downloads are active or servers are running)
 - **Settings**
   - Launcher kind + executable path (with native file picker)

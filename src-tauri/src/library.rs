@@ -39,6 +39,11 @@ pub struct InstalledServer {
     /// Current value of `online-mode` in server.properties.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub online_mode: Option<bool>,
+    /// A standalone server.jar exists — the manager runs it via its own
+    /// generated script with Aikar's flags.
+    pub has_server_jar: bool,
+    /// Configured JVM heap size in MB for managed starts.
+    pub ram_mb: u64,
 }
 
 #[derive(Debug, Serialize)]
@@ -143,6 +148,7 @@ fn is_active_download(state: &AppState, id_prefixes: &[String]) -> bool {
 /// Everything currently stored on disk plus which servers are running.
 #[tauri::command]
 pub fn list_library(state: State<'_, AppState>) -> LibrarySnapshot {
+    let cfg = crate::config::load_config();
     let mut versions = Vec::new();
     if let Ok(entries) = fs::read_dir(config::versions_dir()) {
         for entry in entries.flatten() {
@@ -206,6 +212,12 @@ pub fn list_library(state: State<'_, AppState>) -> LibrarySnapshot {
             let props = crate::server::find_properties(&path);
             let online_mode = props.as_ref().and_then(|p| read_online_mode(p));
             servers.push(InstalledServer {
+                has_server_jar: server::find_server_jar(&path).is_some(),
+                ram_mb: cfg
+                    .server_ram
+                    .get(&tag)
+                    .copied()
+                    .unwrap_or(server::DEFAULT_RAM_MB),
                 tag,
                 dir: path.to_string_lossy().to_string(),
                 script: server::find_script(&path).map(|p| p.to_string_lossy().to_string()),

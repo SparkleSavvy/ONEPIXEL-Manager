@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
 
@@ -29,6 +30,8 @@ pub struct AppConfig {
     /// future self-update feature; self-update stays inert until it is set.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub manager_repo: Option<String>,
+    /// Per-tag JVM heap size in MB for managed server starts.
+    pub server_ram: HashMap<String, u64>,
 }
 
 pub fn app_dir() -> PathBuf {

@@ -16,6 +16,9 @@
   let pendingDeleteVersion = $state<string | null>(null);
   let pendingDeleteServer = $state<string | null>(null);
 
+  const RAM_OPTIONS = [1024, 2048, 3072, 4096, 6144, 8192, 12288, 16384];
+  let installingFabric = $state<Record<string, boolean>>({});
+
   let consoleEl: HTMLDivElement | undefined = $state();
 
   async function refresh() {
@@ -89,6 +92,38 @@
       toasts.error(String(e));
     } finally {
       togglingOnline[tag] = false;
+    }
+  }
+
+  async function changeRam(tag: string, value: string) {
+    const srv = snap?.servers.find((x) => x.tag === tag);
+    if (!srv) return;
+    const mb = Number(value);
+    if (!Number.isFinite(mb)) return;
+    const previous = srv.ramMb;
+    srv.ramMb = mb;
+    try {
+      await api.setServerRam(tag, mb);
+      toasts.show(
+        `RAM set to ${formatBytes(mb * 1024 * 1024)} for ${tag} (applies on next start)`,
+      );
+    } catch (e) {
+      srv.ramMb = previous;
+      toasts.error(String(e));
+    }
+  }
+
+  async function installFabric(tag: string) {
+    if (installingFabric[tag]) return;
+    installingFabric[tag] = true;
+    try {
+      const msg = await api.installFabricServer(tag);
+      toasts.show(msg);
+      await refresh();
+    } catch (e) {
+      toasts.error(String(e));
+    } finally {
+      installingFabric[tag] = false;
     }
   }
 
@@ -236,6 +271,36 @@
                   {s.onlineMode ?? true ? "true" : "false"}
                 </span>
               </span>
+            {/if}
+            {#if s.hasServerJar}
+              <span
+                class="switch-wrap"
+                title="JVM heap for the managed start script (Aikar's flags, server.jar)"
+              >
+                <span class="small muted">RAM</span>
+                <select
+                  class="ram-select mono small"
+                  value={String(s.ramMb ?? 6144)}
+                  onchange={(e) => changeRam(s.tag, (e.currentTarget as HTMLSelectElement).value)}
+                >
+                  {#each RAM_OPTIONS as opt (opt)}
+                    <option value={String(opt)}>{opt / 1024} GB</option>
+                  {/each}
+                </select>
+              </span>
+              <span class="badge" title="Runs via onepixel-start script with Aikar's flags">
+                managed · server.jar
+              </span>
+            {:else if s.script}
+              <button
+                type="button"
+                class="btn btn-sm"
+                disabled={installingFabric[s.tag]}
+                title="Download the Fabric server launcher for 1.20.1 as server.jar and switch to a managed start script"
+                onclick={() => installFabric(s.tag)}
+              >
+                {installingFabric[s.tag] ? "Installing Fabric…" : "Install Fabric 1.20.1"}
+              </button>
             {/if}
           </div>
           <div style="display:flex;gap:8px;flex-shrink:0">

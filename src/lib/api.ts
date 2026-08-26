@@ -46,6 +46,12 @@ export const api = {
   setOnlineMode: (tag: string, enabled: boolean) =>
     invoke<boolean>("set_online_mode", { tag, enabled }),
 
+  setServerRam: (tag: string, mb: number) =>
+    invoke<number>("set_server_ram", { tag, mb }),
+
+  installFabricServer: (tag: string, mcVersion?: string) =>
+    invoke<string>("install_fabric_server", { tag, mcVersion }),
+
   checkUpdates: () => invoke<UpdateStatus>("check_updates"),
 };
 

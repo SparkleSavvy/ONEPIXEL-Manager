@@ -597,3 +597,7 @@ button.server-indicator:hover {
   flex: 1;
   font-family: var(--mono);
 }
+
+.ram-select {
+  padding: 3px 8px;
+}
