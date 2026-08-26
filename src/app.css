@@ -85,6 +85,11 @@ input[type="text"]:focus {
   background: #3c3c42;
 }
 
+:focus-visible {
+  outline: 1.5px solid #7a7a82;
+  outline-offset: 2px;
+}
+
 ::-webkit-scrollbar {
   width: 10px;
   height: 10px;
@@ -251,7 +256,6 @@ button.server-indicator:hover {
 
 .server-indicator.on {
   color: #43c66b;
-  filter: drop-shadow(0 0 5px rgba(67, 198, 107, 0.45));
 }
 
 /* ---------- cards / lists ---------- */
@@ -331,6 +335,14 @@ button.server-indicator:hover {
   background: #d9d9de;
 }
 
+.btn:active:not(:disabled) {
+  background: var(--surface-2);
+}
+
+.btn-primary:active:not(:disabled) {
+  background: #c9c9cf;
+}
+
 .btn-danger:hover:not(:disabled) {
   border-color: #8a8a90;
 }
@@ -355,9 +367,9 @@ button.server-indicator:hover {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 2px 9px;
+  padding: 2px 8px;
   border: 1px solid var(--border-strong);
-  border-radius: 999px;
+  border-radius: 6px;
   font-family: var(--mono);
   font-size: 11px;
   color: var(--text-dim);
@@ -379,7 +391,6 @@ button.server-indicator:hover {
 
 .dot.on {
   background: #ffffff;
-  box-shadow: 0 0 6px rgba(255, 255, 255, 0.55);
 }
 
 /* ---------- progress ---------- */
@@ -453,6 +464,10 @@ button.server-indicator:hover {
   word-break: break-all;
 }
 
+.console .sys {
+  color: var(--text-faint);
+}
+
 .toast-zone {
   position: fixed;
   right: 18px;
@@ -505,15 +520,24 @@ button.server-indicator:hover {
 }
 
 .radio-dot {
+  position: relative;
   width: 12px;
   height: 12px;
   border-radius: 50%;
-  border: 1px solid var(--border-strong);
+  border: 1.5px solid var(--border-strong);
   flex-shrink: 0;
 }
 
 .radio-row.selected .radio-dot {
-  background: radial-gradient(circle, #fff 0 3px, transparent 4px);
+  border-color: var(--accent);
+}
+
+.radio-row.selected .radio-dot::after {
+  content: "";
+  position: absolute;
+  inset: 2.5px;
+  border-radius: 50%;
+  background: var(--accent);
 }
 
 .release-body {

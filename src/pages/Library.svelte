@@ -341,7 +341,9 @@
     </select>
   </span>
   <div class="console" bind:this={consoleEl}>
-    {(servers.logs[selectedServer] ?? []).join("\n")}
+    {#each servers.logs[selectedServer] ?? [] as line, i (i)}
+      <span class:sys={line.startsWith("[manager]")}>{line}</span>{"\n"}
+    {/each}
   </div>
   {#if servers.running[selectedServer]}
     <div class="cmd-row">

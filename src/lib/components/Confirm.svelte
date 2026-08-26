@@ -14,7 +14,13 @@
     onconfirm: () => void;
     onclose: () => void;
   } = $props();
+
+  function onkeydown(e: KeyboardEvent) {
+    if (open && e.key === "Escape") onclose();
+  }
 </script>
+
+<svelte:window {onkeydown} />
 
 {#if open}
   <div
