@@ -4,7 +4,11 @@
 
   import { api } from "../lib/api";
   import { toasts } from "../lib/toast.svelte";
-  import type { DetectedLauncher, UpdateStatus } from "../lib/types";
+  import type {
+    DetectedJava,
+    DetectedLauncher,
+    UpdateStatus,
+  } from "../lib/types";
 
   const KIND_OPTIONS: { id: string; label: string; hint: string }[] = [
     { id: "elyprism", label: "ElyPrism", hint: "Prism fork with Ely.by accounts — imported via -I flag" },
@@ -21,6 +25,43 @@
 
   let updateStatus = $state<UpdateStatus | null>(null);
   let checkingUpdates = $state(false);
+
+  let javaPathInput = $state("");
+  let detectedJava = $state<DetectedJava | null>(null);
+  let javaFlash = $state(false);
+
+  async function loadJava() {
+    try {
+      const config = await api.getConfig();
+      javaPathInput = config.javaPath ?? "";
+      detectedJava = await api.detectJava();
+    } catch (e) {
+      detectedJava = null;
+    }
+  }
+
+  async function saveJava() {
+    try {
+      await api.setJavaPath(javaPathInput.trim() || null);
+      javaFlash = true;
+      setTimeout(() => (javaFlash = false), 1600);
+      await loadJava();
+      toasts.show("Java settings saved");
+    } catch (e) {
+      toasts.error(String(e));
+    }
+  }
+
+  async function browseJava() {
+    const file = await open({
+      multiple: false,
+      filters: [{ name: "Executable", extensions: ["exe"] }],
+    });
+    if (typeof file === "string") {
+      javaPathInput = file;
+      saveJava();
+    }
+  }
 
   async function load() {
     try {
@@ -76,7 +117,10 @@
     }
   }
 
-  onMount(load);
+  onMount(() => {
+    load();
+    loadJava();
+  });
 </script>
 
 <div class="page-head">
@@ -137,6 +181,31 @@
     {/each}
   </div>
 {/if}
+
+<span class="section-label">Java</span>
+
+<div class="card">
+  <div class="row">
+    <input
+      type="text"
+      placeholder="Path to java.exe — leave empty for automatic detection"
+      style="flex:1"
+      bind:value={javaPathInput}
+    />
+    <button class="btn btn-sm" onclick={browseJava}>Browse…</button>
+    <button class="btn btn-primary btn-sm" onclick={saveJava}>
+      {javaFlash ? "Saved" : "Save"}
+    </button>
+  </div>
+  <p class="kbd-note" style="margin-top:10px">
+    {#if detectedJava}
+      Detected: <span class="mono">{detectedJava.path}</span> · Java {detectedJava.major}
+    {:else}
+      No Java 17+ found yet — a Temurin JDK 17 will be downloaded automatically on
+      the first managed server start.
+    {/if}
+  </p>
+</div>
 
 <span class="section-label">Manager updates</span>
 

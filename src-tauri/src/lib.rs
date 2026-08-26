@@ -2,6 +2,7 @@ mod config;
 mod downloader;
 mod fabric;
 mod github;
+mod java;
 mod launcher;
 mod library;
 mod server;
@@ -31,6 +32,8 @@ pub fn run() {
             server::stop_server,
             server::send_server_command,
             server::set_server_ram,
+            server::set_java_path,
+            java::detect_java,
             fabric::install_fabric_server,
             updater::check_updates,
         ])

@@ -119,7 +119,7 @@ async fn download_file(
     Ok(())
 }
 
-fn extract_zip_blocking(
+pub(crate) fn extract_zip_blocking(
     app: AppHandle,
     id: String,
     archive_path: PathBuf,

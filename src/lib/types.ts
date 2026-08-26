@@ -55,6 +55,12 @@ export interface LauncherConfig {
 export interface AppConfig {
   launcher: LauncherConfig | null;
   managerRepo?: string | null;
+  javaPath?: string | null;
+}
+
+export interface DetectedJava {
+  path: string;
+  major: number;
 }
 
 export interface DetectedLauncher {

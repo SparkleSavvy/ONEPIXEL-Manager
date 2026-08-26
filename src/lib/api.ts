@@ -2,6 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 
 import type {
   AppConfig,
+  DetectedJava,
   DetectedLauncher,
   DownloadKind,
   InstallResult,
@@ -48,6 +49,10 @@ export const api = {
 
   setServerRam: (tag: string, mb: number) =>
     invoke<number>("set_server_ram", { tag, mb }),
+
+  setJavaPath: (path: string | null) => invoke<void>("set_java_path", { path }),
+
+  detectJava: () => invoke<DetectedJava | null>("detect_java"),
 
   installFabricServer: (tag: string, mcVersion?: string) =>
     invoke<string>("install_fabric_server", { tag, mcVersion }),

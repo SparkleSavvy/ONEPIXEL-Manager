@@ -32,6 +32,10 @@ pub struct AppConfig {
     pub manager_repo: Option<String>,
     /// Per-tag JVM heap size in MB for managed server starts.
     pub server_ram: HashMap<String, u64>,
+    /// Explicit path to a java executable used by managed server starts.
+    /// When empty, the manager auto-detects or auto-downloads one.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub java_path: Option<String>,
 }
 
 pub fn app_dir() -> PathBuf {
