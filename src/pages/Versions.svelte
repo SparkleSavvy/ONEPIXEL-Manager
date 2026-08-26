@@ -5,7 +5,6 @@
   import { downloads } from "../lib/downloads.svelte";
   import { toasts } from "../lib/toast.svelte";
   import type { AssetInfo, DownloadKind, ReleaseInfo } from "../lib/types";
-  import Progress from "../lib/components/Progress.svelte";
 
   let releases = $state<ReleaseInfo[]>([]);
   let loading = $state(true);
@@ -39,14 +38,6 @@
   async function start(kind: DownloadKind, tag: string) {
     try {
       await api.startDownload(kind, tag);
-    } catch (e) {
-      toasts.error(String(e));
-    }
-  }
-
-  async function cancel(id: string) {
-    try {
-      await api.cancelDownload(id);
     } catch (e) {
       toasts.error(String(e));
     }
@@ -146,9 +137,7 @@
           <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-end;flex-shrink:0">
             {#if client}
               {#if downloads.active(idFor("client", r.tag))}
-                <div style="width:230px">
-                  <Progress id={idFor("client", r.tag)} oncancel={() => cancel(idFor("client", r.tag))} />
-                </div>
+                <span class="faint small">Downloading…</span>
               {:else}
                 <button
                   class="btn btn-primary btn-sm"
@@ -163,7 +152,7 @@
             <div style="display:flex;gap:8px">
               {#if server}
                 {#if downloads.active(idFor("server", r.tag))}
-                  <div style="width:200px"><Progress id={idFor("server", r.tag)} /></div>
+                  <span class="faint small">Downloading…</span>
                 {:else}
                   <button class="btn btn-sm" onclick={() => start("server", r.tag)}>
                     Server pack · {formatBytes(server.size)}
@@ -172,7 +161,7 @@
               {/if}
               {#if zip}
                 {#if downloads.active(idFor("zip", r.tag))}
-                  <div style="width:200px"><Progress id={idFor("zip", r.tag)} /></div>
+                  <span class="faint small">Downloading…</span>
                 {:else}
                   <button class="btn btn-sm" onclick={() => start("zip", r.tag)}>
                     Full ZIP · {formatBytes(zip.size)}

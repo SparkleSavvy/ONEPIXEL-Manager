@@ -70,6 +70,10 @@ class DownloadsStore {
     return Math.min(100, Math.round((s.received / s.total) * 100));
   }
 
+  activeCount(): number {
+    return Object.values(this.map).filter((d) => d.phase !== "done").length;
+  }
+
   onDone(fn: Listener): () => void {
     this.doneListeners.add(fn);
     return () => this.doneListeners.delete(fn);
